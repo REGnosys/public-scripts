@@ -2,7 +2,7 @@
 
 usage()
 {
-    echo "usage: install-rosetta-ingest.sh -c installConfDir -u username -p password -v version -l licenceFile [-h]"
+     echo "usage: install-rosetta-ingest.sh -c installConfDir -u username -p password -v version -l licenceFile [-h]"
 }
 
 set -e
