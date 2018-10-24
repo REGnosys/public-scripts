@@ -1,18 +1,26 @@
 #!/bin/bash
 
-usage()
-{
-    echo "usage: install-rosetta-ingest.sh -c installConfDir -u username -p password -v version -l licenceFile [-h]"
+usage() {
+    echo "usage: install-rosetta-ingest.sh [-i] [-c installConfDir]  [-v version] [-h] -u username -p password -l licenceFile"
+}
+
+checkArg() {
+    if [ "${1}" == "" ]; then
+        usage
+        echo $2
+        exit 1
+    fi
 }
 
 set -e
 set -o pipefail
 
+interactive=
 version=
 username=
 password=
 licenceFile=
-installConfDir=`pwd`/rosetta-ingest-conf
+installConfDir=
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -31,6 +39,9 @@ while [ "$1" != "" ]; do
         -c | --installConfDir ) shift
                                 installConfDir=$1
                                 ;;
+        -i | --interactive )
+                                interactive=true
+                                ;;
         -h | --help )           usage
                                 exit
                                 ;;
@@ -40,33 +51,42 @@ while [ "$1" != "" ]; do
     shift
 done
 
+if [ "$interactive" == "true" ]; then
+    echo "Please enter the REGnosys Artifactory username"
+    read username
+
+    echo "Please enter the REGnosys Artifactory password"
+    read password
+
+    echo "Please enter the REGnosys Licence file path"
+    read licenceFile
+
+    echo "Please enter the install config dir (leave blank for current dir)"
+    read installConfDir
+
+    echo "Please enter the version of Rosetta Ingest you want to install (leave blank for latest version)"
+    read version
+fi
+
+checkArg "$username" "Must give a username"
+checkArg "$password" "Must give a password"
+checkArg "$licenceFile" "Must give a licenceFile"
+
+if [ ! -f "$licenceFile" ]; then
+        echo "$licenceFile does not exist. Please specify a valid licence file."
+        exit 1
+fi
+
+if [ "$installConfDir" == "" ]; then
+        installConfDir=`pwd`/rosetta-ingest-conf
+fi
+
 if [ "$version" == "" ]; then
-        usage
-        echo "Must give a version"
-        exit 1
+        version=latest
 fi
-
-if [ "$username" == "" ]; then
-        usage
-        echo "Must give a username"
-        exit 1
-fi
-
-if [ "$password" == "" ]; then
-        usage
-        echo "Must give a password"
-        exit 1
-fi
-
-if [ "$licenceFile" == "" ]; then
-        usage
-        echo "Must give a licenceFile"
-        exit 1
-fi
-
 
 loginToDocker() {
-    echo "Logging into REGnosys docker registory"
+    echo "Logging into REGnosys docker registory with user ${username}"
     docker login -u $username -p $password  regnosys-docker-registry.jfrog.io
 }
 
@@ -96,15 +116,32 @@ initConfDir() {
 }
 
 runRosettaIngest() {
-    echo "Running Rosetta Ingest :rosetta-ingest-${version}"
+
+    containerName="rosetta-ingest-${version}"
+    
+    containerNameExists=`docker ps -a --format '{{.Names}}' --filter Name=${containerName}`
+    if [ "${containerNameExists}" == "${containerName}" ]; then
+        docker stop ${containerName}
+        docker rm ${containerName}
+    fi
+
+    echo "Running Rosetta Ingest : ${containerName}"
     docker run --name rosetta-ingest-${version} \
             -d \
             -p 9000:5846 \
             -v `pwd`/rosetta-ingest-conf:/app/config \
             regnosys-docker-registry.jfrog.io/rosetta-ingest-service:${version}
 
+    echo
+    echo
     echo "Successfully running :rosetta-ingest-${version}"
-    echo "To check logs, run  : docker logs rosetta-ingest-${version}"
+
+    echo "To check if service is running  : docker ps"  
+    echo "To check logs : docker logs rosetta-ingest-${version}"  
+    echo "To stop the service : docker stop rosetta-ingest-${version}"
+
+    echo "API available at : http://localhost:9000/api/swagger"
+
 }
 
 loginToDocker
