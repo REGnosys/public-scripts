@@ -113,12 +113,21 @@ initConfDir() {
         cdmJarFileName=cdm-${version}.jar
         curl -o ${installConfDir}/${cdmJarFileName} "https://${username}:${password}@regnosys.jfrog.io/regnosys/libs-snapshot-local/com/isda/cdm/${version}/${cdmJarFileName}"
     fi
+
+    echo "Fetching Ingest CLI Jar file with version $version"
+    if [ "$version" == "latest" ]; then
+        ingestCliJarFileName=rosetta-ingest-client-latest-cli.jar
+        curl -o ${installConfDir}/${ingestCliJarFileName} "https://${username}:${password}@regnosys.jfrog.io/regnosys/libs-snapshot-local/com/regnosys/rosetta-ingest-client/\[RELEASE\]/rosetta-ingest-client-\[RELEASE\]-cli.jar"
+    else
+        ingestCliJarFileName=rosetta-ingest-client-${version}-cli.jar
+        curl -o ${installConfDir}/${cdmJarFileName} "https://${username}:${password}@regnosys.jfrog.io/regnosys/libs-snapshot-local/com/regnosys/rosetta-ingest-client/${version}/${ingestCliJarFileName}"
+    fi
 }
 
 runRosettaIngest() {
 
     containerName="rosetta-ingest-${version}"
-    
+
     containerNameExists=`docker ps -a --format '{{.Names}}' --filter Name=${containerName}`
     if [ "${containerNameExists}" == "${containerName}" ]; then
         docker stop ${containerName}
@@ -136,8 +145,8 @@ runRosettaIngest() {
     echo
     echo "Successfully running :rosetta-ingest-${version}"
 
-    echo "To check if service is running  : docker ps"  
-    echo "To check logs : docker logs rosetta-ingest-${version}"  
+    echo "To check if service is running  : docker ps"
+    echo "To check logs : docker logs rosetta-ingest-${version}"
     echo "To stop the service : docker stop rosetta-ingest-${version}"
 
     echo "API available at : http://localhost:9000/api/swagger"
