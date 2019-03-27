@@ -138,7 +138,7 @@ runRosettaIngest() {
     docker run --name rosetta-ingest-${version} \
             -d \
             -p 9000:5846 \
-            -v `pwd`/rosetta-ingest-conf:/app/config \
+            -v ${installConfDir}:/app/config \
             regnosys-docker-registry.jfrog.io/rosetta-ingest-service:${version}
 
     echo
